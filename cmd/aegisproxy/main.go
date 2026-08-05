@@ -1,0 +1,3 @@
+package aegisproxy
+
+func main() {}
