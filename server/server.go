@@ -55,7 +55,7 @@ func (s *Server) serve() error {
 func (s *Server) handleConn(conn net.Conn) {
 	defer s.sem.Release(1)
 	defer conn.Close()
-	slog.Info("connection received, now sleeping")
+	s.logger.Info("connection received, now sleeping")
 	if tlsConn, ok := conn.(*tls.Conn); ok {
 		hctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -71,6 +71,5 @@ func (s *Server) handleConn(conn net.Conn) {
 
 	}
 
-	time.Sleep(time.Second * 5)
-	slog.Info("Connection completed Terminating ")
+	s.logger.Info("Connection completed Terminating ")
 }
