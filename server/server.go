@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net"
 	"os"
+	"time"
 
 	"golang.org/x/sync/semaphore"
 )
@@ -37,6 +37,7 @@ func (s *Server) serve() error {
 		<-s.ctx.Done()
 		s.listner.Close()
 	}()
+	slog.Info("server is ready for requests")
 	for {
 		conn, err := s.listner.Accept()
 		if err != nil {
@@ -53,7 +54,23 @@ func (s *Server) serve() error {
 
 func (s *Server) handleConn(conn net.Conn) {
 	defer s.sem.Release(1)
-	for {
-		fmt.Println("bello ")
+	defer conn.Close()
+	slog.Info("connection received, now sleeping")
+	if tlsConn, ok := conn.(*tls.Conn); ok {
+		hctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := tlsConn.HandshakeContext(hctx); err != nil {
+			s.logger.Warn("tls handshake failed", "remote", conn.RemoteAddr(), "err", err)
+			return
+		}
+		s.logger.Info("tls handshake ok", "remote", conn.RemoteAddr())
+		// TODO: lb.Next() for target
+		// TODO: resilience.Allos(target)
+		// TODO: transport.pump(conn, upstream)
+		// TODO: resilience.Record + telemetry on close
+
 	}
+
+	time.Sleep(time.Second * 5)
+	slog.Info("Connection completed Terminating ")
 }
