@@ -4,6 +4,7 @@ go 1.26.5
 
 require (
 	github.com/gookit/goutil v0.8.0
+	go-simpler.org/assert v0.9.0
 	golang.org/x/sync v0.22.0
 )
 

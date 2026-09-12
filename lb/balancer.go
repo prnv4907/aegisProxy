@@ -2,6 +2,7 @@ package lb
 
 import (
 	"errors"
+	"sync"
 	"sync/atomic"
 )
 
@@ -57,4 +58,24 @@ func (l *LeastConnections) Next() (*Upstream, error) {
 
 func (l LeastConnections) Release(u *Upstream) {
 	u.ActiveConn.Add(^uint64(0))
+}
+
+type ConsistentHash struct {
+	ring       map[uint64]*Upstream
+	sortedKeys []uint64
+	mu         sync.RWMutex
+}
+
+func New() *ConsistentHash {
+	c := &ConsistentHash{
+		ring: make(map[uint64]*Upstream),
+	}
+	return c
+}
+
+func (c *ConsistentHash) IsEmpty() bool {
+	return len(c.ring) == 0
+}
+
+func (c *ConsistentHash) Add(u Upstream) {
 }
