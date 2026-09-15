@@ -31,7 +31,7 @@ func servers(addr string, ready chan<- struct{}) {
 }
 
 func call(roundRobin *RoundRobin) {
-	upstream, err := (*roundRobin).Next()
+	upstream, err := (*roundRobin).Next("")
 	if err != nil {
 		slog.Error("unable to get the upstream")
 		return
@@ -77,7 +77,7 @@ func TestLeastConnection(t *testing.T) {
 			upstream = append(upstream, &upstreamServer)
 		}
 		leastCOnn := LeastConnections{upstream}
-		finalUpstream, err := leastCOnn.Next()
+		finalUpstream, err := leastCOnn.Next("")
 		if err != nil {
 			slog.Error("unable to get the upstream", "error", err)
 			return
@@ -88,7 +88,7 @@ func TestLeastConnection(t *testing.T) {
 
 func LeastConnCall(leastConnection *LeastConnections, wg *sync.WaitGroup) {
 	defer wg.Done()
-	upstream, err := leastConnection.Next()
+	upstream, err := leastConnection.Next("")
 	if err != nil {
 		slog.Error("unable to call next on least Connection struct ", "error", err)
 		return
@@ -122,5 +122,56 @@ func TestLeastConnConc(t *testing.T) {
 			go LeastConnCall(&leastConn, &wg)
 		}
 		wg.Wait()
+	})
+}
+
+// tests for consistent hashing
+
+func TestAddingServer(t *testing.T) {
+	t.Run("test for checking adding server", func(t *testing.T) {
+		constHash := New()
+		upstream := &Upstream{Addr: "8080"}
+		constHash.Add(upstream)
+	})
+}
+
+func TestNext(t *testing.T) {
+	t.Run("testing for getting the next server in the 3 upstaream ring", func(t *testing.T) {
+		constHash := New()
+		for i := range 3 {
+			addr := fmt.Sprintf(":%d", 8080+i)
+			upstream := &Upstream{Addr: addr}
+			constHash.Add(upstream)
+		}
+		up, err := constHash.Next("localhost:8080")
+		if err != nil {
+			t.Errorf("error while getting an upstream, %v", err)
+		}
+		slog.Info("upstream got", "addr", up.Addr)
+	})
+}
+
+func TestForDist(t *testing.T) {
+	t.Run("testing for the distributability in consistent hashing", func(t *testing.T) {
+		constHash := New()
+		for i := range 5 {
+			addr := fmt.Sprintf(":%d", 8080+i)
+			upstream := &Upstream{Addr: addr}
+			constHash.Add(upstream)
+		}
+		var wg sync.WaitGroup
+		for j := range 100 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				up, err := constHash.Next(fmt.Sprintf("localhost:%d", 8080+j))
+				if err != nil {
+					t.Errorf("error while getting an upstream, %v", err)
+				}
+				slog.Info("upstream got", "addr", up.Addr)
+			}()
+			wg.Wait()
+
+		}
 	})
 }
